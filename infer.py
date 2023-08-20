@@ -389,6 +389,7 @@ def visualize(image_file, results, labels, output_dir='output/', threshold=0.5):
     out_path = os.path.join(output_dir, img_name)
     im.save(out_path, quality=95)
     print("save result to: " + out_path)
+    os.system('python3 result_window.py')
 
 
 def print_arguments(args):

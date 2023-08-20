@@ -1,25 +1,20 @@
-# coding: utf-8
-# copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import division
-
-import cv2
-import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
+from dotenv import load_dotenv
 
+import cv2, pymongo, os
+import numpy as np
+
+load_dotenv()
+
+myclient = pymongo.MongoClient(os.getenv("DB_URL"))
+mydb = myclient[os.getenv("DB")]
+mycol = mydb[os.getenv("COLLECTION")]
+
+# delete all previous output images - modified by Batu
+for file in os.listdir('output'):
+    os.remove(os.path.join('output', file))
 
 def visualize_box_mask(im, results, labels, threshold=0.5):
     """
@@ -109,18 +104,21 @@ def draw_mask(im, np_boxes, np_masks, labels, threshold=0.5):
         im[idx[0], idx[1], :] += alpha * color_mask
     return Image.fromarray(im.astype('uint8'))
 
+# function to find the fruit information from mongodb - modified by Batu
+def find_the_fruit(fruit_name): 
+    myquery = { "fruit": { "$regex": "^"+fruit_name } }
+    mydoc = mycol.find(myquery)
+    result = []
+    for x in mydoc:
+        result.append(x)
+    result.sort(key=lambda x: x['price'])   # sort by price
+    price = result[0]['price']
+    provider = result[0]['provider']
 
-def draw_box(im, np_boxes, labels, threshold=0.5):
-    """
-    Args:
-        im (PIL.Image.Image): PIL image
-        np_boxes (np.ndarray): shape:[N,6], N: number of box,
-                               matix element:[class, score, x_min, y_min, x_max, y_max]
-        labels (list): labels:['class1', ..., 'classn']
-        threshold (float): threshold of box
-    Returns:
-        im (PIL.Image.Image): visualized image
-    """
+    return '{}:{}/{} at {}'.format(fruit_name,price,'kg',provider)
+
+
+def draw_box(im, np_boxes, labels, threshold=0.5):  # draw label - modified by Batu
     draw_thickness = min(im.size) // 320
     draw = ImageDraw.Draw(im)
     clsid2color = {}
@@ -128,31 +126,46 @@ def draw_box(im, np_boxes, labels, threshold=0.5):
     expect_boxes = (np_boxes[:, 1] > threshold) & (np_boxes[:, 0] > -1)
     np_boxes = np_boxes[expect_boxes, :]
 
-    for dt in np_boxes:
-        clsid, bbox, score = int(dt[0]), dt[2:], dt[1]
-        xmin, ymin, xmax, ymax = bbox
-        print('class_id:{:d}, confidence:{:.4f}, left_top:[{:.2f},{:.2f}],'
-              'right_bottom:[{:.2f},{:.2f}]'.format(
-                  int(clsid), score, xmin, ymin, xmax, ymax))
-        w = xmax - xmin
-        h = ymax - ymin
-        if clsid not in clsid2color:
-            clsid2color[clsid] = color_list[clsid]
-        color = tuple(clsid2color[clsid])
+    if np_boxes.any():
+        for dt in np_boxes:
+            clsid, bbox, score = int(dt[0]), dt[2:], dt[1]
+            xmin, ymin, xmax, ymax = bbox
+            print('class_id:{:d}, confidence:{:.4f}, left_top:[{:.2f},{:.2f}],'
+                'right_bottom:[{:.2f},{:.2f}]'.format(
+                    int(clsid), score, xmin, ymin, xmax, ymax))
+            w = xmax - xmin
+            h = ymax - ymin
+            if clsid not in clsid2color:
+                clsid2color[clsid] = color_list[clsid]
+            color = tuple(clsid2color[clsid])
 
-        # draw bbox
-        draw.line(
-            [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin),
-             (xmin, ymin)],
-            width=draw_thickness,
-            fill=color)
+            # draw bbox
+            draw.line(
+                [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin),
+                (xmin, ymin)],
+                width=draw_thickness,
+                fill=color)
 
-        # draw label
-        text = "{} {:.4f}".format(labels[clsid], score)
-        tw, th = draw.textsize(text)
-        draw.rectangle(
-            [(xmin + 1, ymin - th), (xmin + tw + 1, ymin)], fill=color)
-        draw.text((xmin + 1, ymin - th), text, fill=(255, 255, 255))
+            # text = "{} {:.4f}".format(labels[clsid], score)   # draw name and confidence
+            text = find_the_fruit(labels[clsid])
+            
+            for file in os.listdir('images'):   # remove input image
+                os.remove(os.path.join('images', file))
+            print('检测到：'+labels[clsid])
+            font = ImageFont.truetype('得意黑.otf', 70)
+            tw, th = draw.textsize(text)
+            # draw.rectangle([(xmin, ymin), (tw, th)], fill=color)
+            print(xmin, ymin, tw, th)
+            draw.text((xmin + 1, ymin - th), text, font=font, fill=(255, 255, 255))
+
+    else:
+        # os.system('python3 result_window.py')
+        x, y = im.size
+        font = ImageFont.truetype('得意黑.otf', 70)
+        text = 'NO FRUIT DETECTED'
+        # drawing text size
+        draw.text((x//2, y//2), text, font=font, align ="center", fill=(255, 255, 255))
+ 
     return im
 
 
