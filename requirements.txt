@@ -10,3 +10,5 @@ pycocotools
 setuptools>=42.0.0
 Pillow==9.5.0
 python-dotenv
+pymongo
+certifi

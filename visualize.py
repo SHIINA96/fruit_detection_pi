@@ -3,12 +3,12 @@ from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
 from dotenv import load_dotenv
 
-import cv2, pymongo, os
+import cv2, pymongo, os, certifi
 import numpy as np
 
 load_dotenv()
 
-myclient = pymongo.MongoClient(os.getenv("DB_URL"))
+myclient = pymongo.MongoClient(os.getenv("DB_URL"),tlsCAFile=certifi.where())
 mydb = myclient[os.getenv("DB")]
 mycol = mydb[os.getenv("COLLECTION")]
 
@@ -155,8 +155,7 @@ def draw_box(im, np_boxes, labels, threshold=0.5):  # draw label - modified by B
             font = ImageFont.truetype('得意黑.otf', 70)
             tw, th = draw.textsize(text)
             # draw.rectangle([(xmin, ymin), (tw, th)], fill=color)
-            print(xmin, ymin, tw, th)
-            draw.text((xmin + 1, ymin - th), text, font=font, fill=(255, 255, 255))
+            draw.text((300, ymin), text, font=font, fill=(255, 255, 255))
 
     else:
         # os.system('python3 result_window.py')

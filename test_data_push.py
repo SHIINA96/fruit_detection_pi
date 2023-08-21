@@ -1,17 +1,17 @@
 from random import randint, choice, random
 from dotenv import load_dotenv
-import pymongo, os, re
+import pymongo, os, re, certifi
 
 load_dotenv()
 
-myclient = pymongo.MongoClient(os.getenv("DB_URL"))
+myclient = pymongo.MongoClient(os.getenv("DB_URL"), tlsCAFile=certifi.where())
 mydb = myclient[os.getenv("DB")]
 mycol = mydb[os.getenv("COLLECTION")]
 
 # Set data and add into collection
 fruit_list = ['apple','banana','orange']
 units = ['kg','500g','each']
-provider_list = ['park n save','new world','countdonw','warehouse']
+provider_list = ['park n save','new world','countdown','warehouse']
 
 # check if unit is gram
 pattern = r"^[^k]*g$" 

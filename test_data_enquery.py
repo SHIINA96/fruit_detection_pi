@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
-import pymongo, os
+import pymongo, os, certifi
 
 load_dotenv()
 
-myclient = pymongo.MongoClient(os.getenv("DB_URL"))
+myclient = pymongo.MongoClient(os.getenv("DB_URL"),tlsCAFile=certifi.where())
 mydb = myclient[os.getenv("DB")]
 mycol = mydb[os.getenv("COLLECTION")]
 
