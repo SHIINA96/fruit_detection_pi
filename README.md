@@ -25,3 +25,6 @@ pip install -r requirements.txt
 ```bazaar
 python .\infer.py --model_dir=yolov3_mobilenet_v3_large_voc --image_file=images\mixed_6.jpg
 ```
+
+## 五、其他
+目标检测、语义分割模型定制，联系QQ：884001583
